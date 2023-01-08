@@ -8,6 +8,7 @@ Anthill::Anthill(AnthillParameters* anthillParameters)
     posY = anthillParameters->posY;
     size = anthillParameters->size;
     antAmount = anthillParameters->antAmount;
+    foodAmount = 0;
 }
 
 bool Anthill::antColision(float antPosx, float antPosY)

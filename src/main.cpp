@@ -10,6 +10,22 @@ int main()
 
     srand(GLOBAL_SEED);
 
+    //----------------------------------------------------------------------------------
+    // Starting the simulation
+    openglContext->userInterface->stateSimulation = RUNNING;
+
+    openglContext->parameterAssigner = new ParameterAssigner("src/swarmEnvironment/experiments/generation.json");
+    openglContext->environment = new Environment(openglContext->parameterAssigner);
+    openglContext->environment->initializeEnvironment(openglBuffersManager);
+
+    openglContext->environment->createNest(0, openglBuffersManager);
+    openglContext->environment->createFoodSource(0, openglBuffersManager);
+    openglContext->environment->createFoodSource(1, openglBuffersManager);
+    openglContext->environment->createFoodSource(2, openglBuffersManager);
+    openglContext->environment->createFoodSource(3, openglBuffersManager);
+    openglContext->environment->createAnt(0, openglBuffersManager);
+    //----------------------------------------------------------------------------------
+
     openglContext->run(openglBuffersManager);
 
     openglContext->end();

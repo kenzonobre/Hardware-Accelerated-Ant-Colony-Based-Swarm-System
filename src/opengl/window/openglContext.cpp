@@ -1,5 +1,7 @@
 #include <openglContext.h>
 
+#define SIMULATION_PERIOD 1500
+
 OpenglContext::OpenglContext(){}
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -85,7 +87,8 @@ void OpenglContext::pollEvents()
     glfwPollEvents();
 
     frameCounter++;
-    frameCounter %= 1000; 
+    frameCounter %= (SIMULATION_PERIOD + 1); 
+    //frameCounter %= 1000; 
 }
 
 void OpenglContext::pre_render()
@@ -170,6 +173,11 @@ void OpenglContext::run(OpenglBuffersManager* openglBuffersManager)
                     }
                     userInterface->run(); //RETIRAR DAQUI PARA MAIOR EXCLUSIVIDADE DO RUN
                     post_render(); 
+
+                    if (frameCounter == SIMULATION_PERIOD) {
+                        userInterface->stateSimulation = CLOSED;
+                        std::cout << environment->nests[0]->foodAmount;
+                    }
 
                     //debugExecutionTimeStart();
                     //debugExecutionTimeStop("total");

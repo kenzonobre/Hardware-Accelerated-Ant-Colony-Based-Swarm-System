@@ -26,6 +26,7 @@ ParameterAssigner::ParameterAssigner(const char* filePath)
 	document.Parse(jsonString.c_str());
 
     setGlobalSeed(document["randomSeed"].GetInt());
+    //srand(GLOBAL_SEED);
     //A DEFINIÇÃO DO DATA_SIZE ACONTECE ANTES DAQUI NO .H, PRECISA RESOLVER ISSO
     //setScrHeight(2000);
     //setScrWidth(2000);
@@ -86,8 +87,9 @@ ParameterAssigner::ParameterAssigner(const char* filePath)
 
 	AntParameters* antParameters = (AntParameters*) malloc(sizeof(AntParameters));
 	antParameters->nestID = 0;
+
 	antParameters->size = 0.002;
-	antParameters->velocity = 0.0004;
+	antParameters->velocity = document["ants"][0]["velocity"].GetDouble();
 
 	antParameters->state = EXPLORER;
 	antParameters->pheromoneType = RED;

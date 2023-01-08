@@ -15,6 +15,7 @@ class Anthill
 		float posY;
 		float size;
 		int antAmount;
+		int foodAmount;
 
 
 		Anthill(AnthillParameters* anthillParameters);

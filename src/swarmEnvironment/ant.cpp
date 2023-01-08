@@ -29,6 +29,8 @@ Ant::Ant(int newId, float newPosX, float newPosY, AntParameters* antParameters)
 
 	pheromoneSensorR = new AntSensor(0, antParameters->antSensorParameters);
 	pheromoneSensorL = new AntSensor(1, antParameters->antSensorParameters2);
+
+	carryingFood = false;
 }
 
 void Ant::move(int l)
@@ -81,7 +83,7 @@ bool Ant::foodColision(vector<FoodSource*> foodSources)
 	{
 		if(foodSources[i]->antColision(posX, posY))
 		{
-			posX= foodSources[i]->posX;
+			posX = foodSources[i]->posX;
 			posY = foodSources[i]->posY;
 			carryingFood = true;	
 			return true;
@@ -96,7 +98,10 @@ bool Ant::nestColision(vector<Anthill*> antColonies)
 	{
 		if(antColonies[i]->antColision(posX, posY))
 		{
-			posX= antColonies[i]->posX;
+			if(carryingFood) {
+				antColonies[i]->foodAmount++;
+			}
+			posX = antColonies[i]->posX;
 			posY = antColonies[i]->posY;
 			carryingFood = false;
 			return true;
