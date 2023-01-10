@@ -14,7 +14,7 @@ int main()
     // Starting the simulation
     openglContext->userInterface->stateSimulation = RUNNING;
 
-    openglContext->parameterAssigner = new ParameterAssigner("src/swarmEnvironment/experiments/generation.json");
+    openglContext->parameterAssigner = new ParameterAssigner("src/swarmEnvironment/experiments/simulation.json");
     openglContext->environment = new Environment(openglContext->parameterAssigner);
     openglContext->environment->initializeEnvironment(openglBuffersManager);
 
