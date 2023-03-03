@@ -1,6 +1,6 @@
 #include <openglContext.h>
 
-#define SIMULATION_PERIOD 1500
+#define SIMULATION_PERIOD 15000
 
 OpenglContext::OpenglContext(){}
 
