@@ -10,16 +10,18 @@
 #include <math.h>
 #include <random>
 #include <iomanip>
-
-#define TAX_OF_MUTATION 0.1 // In percentage
-#define POPULATION_SIZE 10
-#define MAX_GENERATIONS 1000
-#define GENS_TO_BALANCE 30
-#define NUM_OF_GENES 1
+#include <queue>
 
 using namespace std;
 
 mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+
+double TAX_OF_MUTATION = 0.05; // In percentage
+#define POPULATION_SIZE 10
+#define MAX_GENERATIONS 1000
+#define GENS_TO_BALANCE 30
+#define NUM_OF_GENES 1
+#define NUM_OF_GENERATIONS_FOR_FITNESS_MEAN 5
 
 //	Returns a random integer between INT_MIN and INT_MAX
 int randomInt(int lowerBound = INT_MIN, int upperBound = INT_MAX)
@@ -48,24 +50,22 @@ public :
 	vector<float> genes;
 	vector<float> genesLowerBound;
 	vector<float> genesUpperBound;
-	int fitness;
+	queue<int> lattestFitnesses;
+	int sumOfFitness;
 
 	Individual(	vector<float> _genes = vector<float>(0),
 				vector<float> _genesLowerBound = vector<float>(0),
 				vector<float> _genesUpperBound = vector<float>(0)) 
 	{
-		
 		genes = _genes;
 		genesLowerBound = _genesLowerBound;
 		genesUpperBound = _genesUpperBound;
-		fitness = -1;
+		lattestFitnesses = queue<int>();
+		sumOfFitness = 0;
 	}
 
-	int getFitnessScore()
+	void calculateFitnessScore()
 	{
-		if(fitness != -1)
-			return fitness;
-
 		string commandLine = "./jsonFileWriter";
 		for(float gene : genes)
 			commandLine += " " + to_string(gene);
@@ -88,8 +88,33 @@ public :
 		fgets(answer, sizeof(answer), fpipe);
 		pclose(fpipe);
 
-		fitness = stof(answer);
-		return fitness;
+		int fitness = stof(answer);
+
+		//	Updating the sum of fitness scores of the lattest generations
+		if(!lattestFitnesses.empty())
+			sumOfFitness -= lattestFitnesses.front();
+		sumOfFitness += fitness;
+
+		//	Updating the fitness scores of the lattest generations
+		if(!lattestFitnesses.empty())
+			lattestFitnesses.pop();
+		lattestFitnesses.push(fitness);
+	}
+
+	int getLattestFitnessScore()
+	{
+		if(lattestFitnesses.empty())
+			calculateFitnessScore();
+
+		return lattestFitnesses.back();
+	}
+
+	float getMeanFitnessScore()
+	{
+		if(lattestFitnesses.empty())
+			calculateFitnessScore();
+
+		return (float) sumOfFitness / lattestFitnesses.size();
 	}
 
 	//	Returns the indexes of the genes that need to mutate
@@ -133,23 +158,10 @@ public :
 		}
 	}
 
-	//	Operator that checks if the individual is less apt than other
-	bool operator < (Individual other)
-	{	return (*this).getFitnessScore() < other.getFitnessScore();	}
-
-	//	Operator that checks if the individual is more apt than other
-	bool operator > (Individual other)
-	{	return (*this).getFitnessScore() > other.getFitnessScore();	}
-
-	//	Operator that checks if the individual has the same aptness than other
-	bool operator == (Individual other)
-	{	return (*this).getFitnessScore() == other.getFitnessScore();	}
-
 	//	Operator that simulates the crossover between two individuals
 	Individual operator + (Individual other)
 	{
 		Individual child = (*this);
-		child.fitness = -1;
 
 		for(int i = 0; i < (int) child.genes.size(); i++)
 			child.genes[i] = (((*this).genes[i] + other.genes[i]) / 2.0);
@@ -196,13 +208,13 @@ public :
 	//	Return the current index of the best individual
 	int getBestIndividualIndex()
 	{
-		int bestIndividualIndex = 0;
+		int bestIndex = 0;
 		
 		for(int i = 1; i < (int) individuals.size(); i++)
-			if(individuals[bestIndividualIndex] < individuals[i])
-				bestIndividualIndex = i;
+			if(individuals[bestIndex].getMeanFitnessScore() < individuals[i].getMeanFitnessScore())
+				bestIndex = i;
 
-		return bestIndividualIndex;
+		return bestIndex;
 	}
 
 	//	Best individual becomes the first individual of the vector
@@ -214,12 +226,21 @@ public :
 
 	void elitism()
 	{
-		realocateBestIndividual();
+		int bestIndex = getBestIndividualIndex();
 
-		for(int i = 1; i < (int) individuals.size(); i++)
+		for(int i = 0; i < (int) individuals.size(); i++)
 		{
-			individuals[i] = (individuals[0] + individuals[i]);
-			individuals[i].mutateGenes();
+			//	Crossing the i-th individual with the best individual
+			if(i != bestIndex && individuals[i].getLattestFitnessScore() < individuals[bestIndex].getLattestFitnessScore())
+			{
+				//	Crossover
+				individuals[i] = (individuals[i] + individuals[bestIndex]);
+				
+				//	Mutation
+				individuals[i].mutateGenes();
+			}
+
+			individuals[i].calculateFitnessScore();
 		}
 	}
 };
@@ -249,8 +270,6 @@ int main ()
 	// base.genes[1] = 60;
 	// base.genesLowerBound[1] = 0;
 	// base.genesUpperBound[1] = 255;
-
-	base.fitness = -1;
 	// ----------------------------------------------- //
 
 
@@ -260,37 +279,60 @@ int main ()
 	ofstream myfile;
 	myfile.open("evolution.txt");
 
-	vector<float> bestGenes(1, 0);
+	vector<float> bestGenes(NUM_OF_GENES, 0);
 	int flag = 0;
 
-	for(int i = 0; i < MAX_GENERATIONS; i++)
+	for(int generation = 0; generation < MAX_GENERATIONS; generation++)
 	{
-		for(int j = 0; j < (int) population.individuals.size(); j++)
-			population.individuals[j].getFitnessScore();
+		cout << "GENERATION " << generation << " TAX_OF_MUTATION " << TAX_OF_MUTATION << " flag " << flag << "\n";
 
-		population.realocateBestIndividual();
+		int bestIndex = population.getBestIndividualIndex();
 
-		for(int j = 0; j < (int) population.individuals.size(); j++)
+		myfile << generation << " ";
+		cout << generation << " ";
+		for(float gene : population.individuals[bestIndex].genes)
 		{
-			myfile << i << " ";
-			cout << i << " ";
-			for(float gene : population.individuals[j].genes)
-			{
-				myfile << setprecision(6) << gene << " ";
-				cout << setprecision(6) << gene << " ";
-			}
-
-			myfile << population.individuals[j].getFitnessScore() << "\n";
-			cout << population.individuals[j].getFitnessScore() << "\n";
+			myfile << setprecision(6) << gene << " ";
+			cout << setprecision(6) << gene << " ";
 		}
 
-		if(bestGenes == population.individuals[0].genes)
+		myfile << population.individuals[bestIndex].getLattestFitnessScore() << "\n";
+		cout << population.individuals[bestIndex].getLattestFitnessScore() << "\n";
+
+		for(int i = 0; i < (int) population.individuals.size(); i++)
+		{
+			if(i != bestIndex)
+			{
+				myfile << generation << " ";
+				cout << generation << " ";
+				for(float gene : population.individuals[i].genes)
+				{
+					myfile << setprecision(6) << gene << " ";
+					cout << setprecision(6) << gene << " ";
+				}
+
+				myfile << population.individuals[i].getLattestFitnessScore() << "\n";
+				cout << population.individuals[i].getLattestFitnessScore() << "\n";
+			}
+		}
+
+		if(bestGenes == population.individuals[bestIndex].genes)
 			flag++;
 		else
 		{
 			flag = 0;
-			bestGenes = population.individuals[0].genes;
+			TAX_OF_MUTATION = 0.05;
+			bestGenes = population.individuals[bestIndex].genes;
 		}
+
+		if(flag == 5)
+			TAX_OF_MUTATION *= 2.0;
+		else if(flag == 10)
+			TAX_OF_MUTATION *= 2.0;
+		else if(flag == 15)
+			TAX_OF_MUTATION *= 2.0;
+		else if(flag == 20)
+			TAX_OF_MUTATION *= 2.0;
 
 		if(flag >= GENS_TO_BALANCE)
 			break;
